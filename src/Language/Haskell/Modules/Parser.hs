@@ -38,12 +38,8 @@ exportList :: PS.Parser [Name]
 exportList = sepBy exportItem (reservedOp ",")
 
 maybeExports :: PS.Parser (Maybe [Name])
-maybeExports = (do
-    reservedOp "("
-    es <- exportList
-    reservedOp ")"
-    return $ Just es
-    )
+maybeExports =
+       (parens exportList >>= pure . Just)
   <||> (return Nothing)
 
 parseImports = return []
@@ -58,18 +54,30 @@ parsePackage srcdir = do
     then return $ Right $ rights es
     else return $ Left  $ lefts  es
 
+nameDecl :: PS.Parser Name
+nameDecl = do
+  n <- identifier
+  reservedOp "::"
+  _ <- identifier
+  pure $ Fncn n
+
+nameDecls :: PS.Parser [Name]
+nameDecls = many nameDecl
+
 parseModule :: FilePath -> PS.Parser Module
 parseModule srcdir = do
   reserved "module"
-  n    <- identifier
-  es   <- maybeExports
+  n     <- identifier
+  es    <- maybeExports
   reserved "where"
-  is   <- parseImports
+  is    <- parseImports
+  ds    <- nameDecls
   return $ defModule
     { name    = MN n
     , srcdir  = srcdir
     , exports = es
     , imports = is
+    , decls   = ds
     }
 
 ------------------------------------------------------------------------------
@@ -81,7 +89,7 @@ parseModule srcdir = do
 lexer :: PT.TokenParser ()
 lexer = PT.makeTokenParser $ haskellStyle
   { reservedOpNames = ["::"]
-  , reservedNames   = ["module", "qualified", "as", "Int", "where"]
+  , reservedNames   = ["module", "qualified", "as", "where"]
   }
 
 whiteSpace    = PT.whiteSpace  lexer

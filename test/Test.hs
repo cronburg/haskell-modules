@@ -30,11 +30,12 @@ testRev :: Assertion
 testRev = reverse [1, 2, 3] @?= [3, 2, 1]
 
 ex00_exp =
-  Module
+  defModule
     { name    = MN "M"
     , srcdir  = "test/ex00/"
     , exports = Just [Fncn "x", Fncn "y", Fncn "z"]
     , imports = []
+    , decls   = [Fncn "x", Fncn "y", Fncn "z"]
     , env     = []
   }
 

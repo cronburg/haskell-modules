@@ -13,7 +13,8 @@ data Module = Module
   , srcdir  :: FilePath
   , exports :: Maybe [Name]   -- list of names exported
   , imports :: [Name]         -- list of names imported
-  , env     :: [Name]         -- list of names in scope
+  , decls   :: [Name]
+  , env     :: [Name]
   } deriving (Eq, Show)
 
 type Package = [Module]
@@ -24,6 +25,7 @@ defModule = Module
   , srcdir  = ""
   , exports = Nothing
   , imports = []
+  , decls   = []
   , env     = []
   }
 
