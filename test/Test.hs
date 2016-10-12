@@ -4,6 +4,7 @@ import Data.List
 import Control.Lens
 import System.Directory
 import qualified Data.Set as Set
+import Data.Either (rights, lefts)
 
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Monoid
@@ -30,7 +31,8 @@ testRev = reverse [1, 2, 3] @?= [3, 2, 1]
 
 ex00_exp =
   Module
-    { name    = Just $ MN "M"
+    { name    = MN "M"
+    , srcdir  = "test/ex00/"
     , exports = Just [Fncn "x", Fncn "y", Fncn "z"]
     , imports = []
     , env     = []
@@ -38,6 +40,6 @@ ex00_exp =
 
 testParse :: FilePath -> [Module] -> Assertion
 testParse dir ms_exp = do
-  ms <- parseModules dir
-  ms @?= map Right ms_exp
+  ms <- parsePackage dir
+  ms @?= Right ms_exp
 
