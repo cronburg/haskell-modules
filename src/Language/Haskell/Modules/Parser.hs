@@ -1,6 +1,5 @@
-{-# LANGUAGE DeriveDataTypeable,TemplateHaskell,ScopedTypeVariables,KindSignatures #-}
 module Language.Haskell.Modules.Parser
-  ( parseModule ) 
+  ( parseModule, parseModules ) 
   where
 
 import Text.ParserCombinators.Parsec
@@ -11,20 +10,29 @@ import qualified Text.Parsec.Expr as PE
 import Text.ParserCombinators.Parsec.Language (haskellStyle, reservedOpNames, reservedNames)
 import Text.ParserCombinators.Parsec.Pos      (newPos)
 import Data.Char        -- Provides isDigit and isSpace functions
-
+import System.Directory
+import Control.Monad (zipWithM)
 import Language.Haskell.Modules.Syntax
 
 ------------------------------------------------------------------------------
 -- Parsers
 
-parseModule :: PS.Parser Module
-parseModule = do
+-- Parse all modules in the given source
+parseModules :: FilePath -> IO [Either ParseError Module]
+parseModules srcdir = do
+  ms <- listDirectory srcdir
+  cs <- mapM (\f -> readFile $ srcdir ++ f) ms
+  return $ map (\(fn,cont) -> PP.parse (parseModule srcdir) fn cont) $ zip ms cs
+
+parseModule :: FilePath -> PS.Parser Module
+parseModule srcdir = do
   reserved "module"
   name <- identifier
   return Module
-    { name = Just $ MN name
+    { name    = Just $ MN name
     , exports = Nothing
     , imports = []
+    , env     = []
     }
 
 ------------------------------------------------------------------------------

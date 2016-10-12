@@ -2,6 +2,8 @@ module Main where
 import Control.Monad.State.Lazy (execState, runStateT, liftIO)
 import Data.List
 import Control.Lens
+import System.Directory
+import qualified Data.Set as Set
 
 import System.IO.Unsafe (unsafePerformIO)
 import Data.Monoid
@@ -19,24 +21,23 @@ import qualified Text.Parsec.Prim   as PP
 main :: IO ()
 main = defaultMainWithOpts
   [ testCase      "rev"                 testRev
-  , testCase      "parseModule"         testParse
+  , testCase      "parseModule"       $ testParse "test/ex00/" [ex00_exp]
   ] mempty
 
 -- Example assertion and property:
 testRev :: Assertion
 testRev = reverse [1, 2, 3] @?= [3, 2, 1]
 
-testParse :: Assertion
-testParse = (PP.parse parseModule "" $ unlines [
-  "module M (x,y,z) where",
-  "x :: Int",
-  "y :: Int",
-  "z :: Int"
-  ]) @?= Right testParseExp
-
-testParseExp = Module
-  { name    = Just $ MN "M"
-  , exports = Just [Fncn "x", Fncn "y", Fncn "z"]
-  , imports = []
+ex00_exp =
+  Module
+    { name    = Just $ MN "M"
+    , exports = Just [Fncn "x", Fncn "y", Fncn "z"]
+    , imports = []
+    , env     = []
   }
+
+testParse :: FilePath -> [Module] -> Assertion
+testParse dir ms_exp = do
+  ms <- parseModules dir
+  ms @?= map Right ms_exp
 
