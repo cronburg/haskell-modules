@@ -1,6 +1,7 @@
 module Language.Haskell.Modules.Parser
   ( parseModule
   , parsePackage
+  , buildModuleEnv
   ) where
 
 import Text.ParserCombinators.Parsec
@@ -14,13 +15,31 @@ import Data.Char        -- Provides isDigit and isSpace functions
 import System.Directory
 import Control.Monad (zipWithM)
 import Data.Either (lefts, rights)
+import System.IO
 
 import Language.Haskell.Modules.Syntax
 
 ------------------------------------------------------------------------------
 -- Semantics
+
+-- Get a list of the names introduced when another module imports the given
+-- module:
+getExports :: Module -> [Name]
+getExports Module { exports = Nothing, decls = ds } = ds
+getExports Module { exports = Just es} = es
+
+-- Update a module's environment according to its imports and decls
+importEnv :: Package -> Module -> Module
+importEnv [] m = m { env = env m ++ decls m }
+importEnv (m':ms') m
+  | name m' `elem` imports m = importEnv ms' (m { env = env m ++ getExports m' })
+  | otherwise = importEnv ms' m
+
 buildModuleEnv :: Package -> Package
-buildModuleEnv pkg = pkg
+buildModuleEnv pkg = foldr ((:) . importEnv pkg) [] pkg
+--  let bME [] = []
+--      bME (m:ms) = (m { env = importEnv pkg m } : bME ms)
+--  in bME pkg
 
 -----------------------------------------------------------------------------
 -- Parsers
@@ -42,15 +61,20 @@ maybeExports =
        (parens exportList >>= pure . Just)
   <||> (return Nothing)
 
-parseImports = return []
+parseImport =
+       (reserved "import" >> reserved "qualified" >> identifier >>= pure . MN)
+  <||> (reserved "import" >> identifier >>= pure . MN)
+
+parseImports = many parseImport
 
 -- Parse all modules in the given source
-parsePackage :: FilePath -> IO (Either [ParseError] Package)
-parsePackage srcdir = do
-  ms <- listDirectory srcdir
+parsePackage :: FilePath -> FilePath -> IO (Either [ParseError] Package)
+parsePackage srcdir ignore = do
+  ms' <- listDirectory srcdir
+  let ms = filter (ignore /=) ms'
   cs <- mapM (\f -> readFile $ srcdir ++ f) ms
   let es = map (\(fn,cont) -> PP.parse (parseModule srcdir) fn cont) $ zip ms cs
-  if length (lefts es) == 0
+  if null $ lefts es
     then return $ Right $ rights es
     else return $ Left  $ lefts  es
 
